@@ -1,0 +1,6 @@
+Jan 12 10:00:01 server sshd[123]: Accepted publickey for admin from 10.0.0.5 port 50210 ssh2
+Jan 12 10:01:15 server sshd[124]: Failed password for invalid user root from 192.168.1.50 port 50212 ssh2
+Jan 12 10:01:17 server sshd[125]: Failed password for root from 192.168.1.50 port 50213 ssh2
+Jan 12 10:01:20 server sshd[126]: Failed password for admin from 192.168.1.50 port 50214 ssh2
+Jan 12 10:05:00 server sshd[130]: Failed password for test from 203.0.113.4 port 22 ssh2
+Jan 12 10:05:03 server sshd[131]: Failed password for root from 192.168.1.50 port 50215 ssh2
