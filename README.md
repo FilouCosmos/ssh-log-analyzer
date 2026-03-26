@@ -26,7 +26,7 @@ Action Directe : Utilise os.system pour interagir avec Netfilter/iptables de man
 Un fichier sample_auth.log peut être utilisé pour tester le script en toute sécurité sur votre machine avant le passage en production.
 
 ```bash
-git clone https://github.com/VOTRE_USER/ssh-log-analyzer.git
+git clone https://github.com/FilouCosmos/ssh-log-analyzer.git
 cd ssh-log-analyzer
 # Exécutez le script en mode Dry-Run (Simulation) :
 python3 fail2ban_custom.py
