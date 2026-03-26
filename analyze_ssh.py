@@ -1,64 +1,51 @@
 import re
-import subprocess
+import os
 from collections import Counter
-from typing import Dict, List
 
-# --- Configuration ---
-# Pour tester sur GitHub, on utilise le fichier fourni.
-# !!! EN PRODUCTION : Remplacez par "/var/log/auth.log" (ou /var/log/secure sur CentOS)
-CHEMIN_LOG_SSH = "sample_auth.log" 
-SEUIL_ECHECS = 3
-
-# Mettre à False pour exécuter réellement la commande iptables (nécessite sudo)
-MODE_SIMULATION = True 
+# --- Config ---
+LOG_FILE = "sample_auth.log" # /var/log/auth.log en prod
+MAX_FAILURES = 3
+DRY_RUN = True # Passer a False pour bloquer reellement
 # ---------------------
 
-def extraire_ips_suspectes(chemin_fichier: str) -> List[str]:
-    """Parcourt le fichier de log et extrait les IPs ayant échoué à s'authentifier."""
-    pattern_echec = re.compile(r"Failed password.*from\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)")
+def get_bad_ips(logfile):
+    # Cherche le pattern "Failed password" et chope l'IP
+    regex = re.compile(r"Failed password.*from\s+([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)")
     ips = []
     
     try:
-        with open(chemin_fichier, 'r') as f:
-            for ligne in f:
-                match = pattern_echec.search(ligne)
+        with open(logfile, 'r') as f:
+            for line in f:
+                match = regex.search(line)
                 if match:
                     ips.append(match.group(1))
-    except FileNotFoundError:
-        print(f"! Erreur : Impossible de trouver le fichier {chemin_fichier}")
-    except PermissionError:
-        print(f"! Erreur : Droits insuffisants pour lire {chemin_fichier}. Lancez avec sudo.")
-        
-    return ips
+        return ips
+    except Exception as e:
+        print(f"[ERROR] Impossible de lire {logfile}: {e}")
+        return []
 
-def bannir_ip(ip: str) -> None:
-    """Bloque une adresse IP en utilisant le pare-feu iptables."""
-    commande = ["iptables", "-A", "INPUT", "-s", ip, "-j", "DROP"]
-    
-    if MODE_SIMULATION:
-        print(f"  [SIMULATION] Commande qui serait exécutée : {' '.join(commande)}")
+def ban_ip(ip):
+    cmd = f"iptables -A INPUT -s {ip} -j DROP"
+    if DRY_RUN:
+        print(f"[DRY-RUN] Exec: {cmd}")
     else:
-        try:
-            subprocess.run(commande, check=True)
-            print(f" L'IP {ip} a été bannie avec succès via iptables.")
-        except subprocess.CalledProcessError as e:
-            print(f"! Erreur lors du bannissement de l'IP {ip} : {e}")
-        except FileNotFoundError:
-             print("! Erreur : La commande 'iptables' n'est pas installée sur ce système.")
+        os.system(cmd)
+        print(f"[ACTION] IP {ip} bannie du serveur.")
 
 if __name__ == "__main__":
-    print(f" Analyse du fichier {CHEMIN_LOG_SSH} en cours...\n")
-    liste_ips_echouees = extraire_ips_suspectes(CHEMIN_LOG_SSH)
+    print(f"[INFO] Analyse de {LOG_FILE}...")
     
-    if liste_ips_echouees:
-        compteur_ips: Dict[str, int] = dict(Counter(liste_ips_echouees))
+    failed_ips = get_bad_ips(LOG_FILE)
+    
+    if failed_ips:
+        # Compte le nb d'occurrences pour chaque IP
+        ip_counts = Counter(failed_ips)
         
-        print(" Résultats de l'analyse :")
-        for ip, tentatives in compteur_ips.items():
-            if tentatives >= SEUIL_ECHECS:
-                print(f"!!!  [ALERTE] Attaque par force brute détectée depuis {ip} ({tentatives} échecs).")
-                bannir_ip(ip)
+        for ip, count in ip_counts.items():
+            if count >= MAX_FAILURES:
+                print(f"[WARN] Bruteforce depuis {ip} ({count} echecs)")
+                ban_ip(ip)
             else:
-                print(f" {ip} : {tentatives} échec(s) - Toléré (sous le seuil).")
+                print(f"[OK] {ip} : {count} echec(s) - ignore")
     else:
-        print(" Aucun échec de connexion suspect détecté.")
+        print("[OK] Aucun echec suspect trouve dans les logs.")
