@@ -5,7 +5,7 @@ from collections import Counter
 # --- Config ---
 LOG_FILE = "sample_auth.log" # /var/log/auth.log en prod
 MAX_FAILURES = 3
-DRY_RUN = True # Passer a False pour bloquer reellement
+DRY_RUN = True # Passer a False pour bloquer reelement
 # ---------------------
 
 def get_bad_ips(logfile):
